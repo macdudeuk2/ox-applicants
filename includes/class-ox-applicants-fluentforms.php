@@ -259,7 +259,29 @@ class OX_Applicants_FluentForms {
      * @param array $application_data Application data
      */
     private function store_user_meta(int $user_id, array $application_data): void {
-        // Store address information
+        // Store WooCommerce billing address fields
+        update_user_meta($user_id, 'billing_first_name', $application_data['first_name']);
+        update_user_meta($user_id, 'billing_last_name', $application_data['last_name']);
+        update_user_meta($user_id, 'billing_email', $application_data['email']);
+        update_user_meta($user_id, 'billing_phone', $application_data['phone']);
+        update_user_meta($user_id, 'billing_address_1', $application_data['address_line_1']);
+        update_user_meta($user_id, 'billing_address_2', $application_data['address_line_2']);
+        update_user_meta($user_id, 'billing_city', $application_data['city']);
+        update_user_meta($user_id, 'billing_state', $application_data['state']);
+        update_user_meta($user_id, 'billing_postcode', $application_data['zip']);
+        update_user_meta($user_id, 'billing_country', $application_data['country']);
+
+        // Store WooCommerce shipping address fields (same as billing for now)
+        update_user_meta($user_id, 'shipping_first_name', $application_data['first_name']);
+        update_user_meta($user_id, 'shipping_last_name', $application_data['last_name']);
+        update_user_meta($user_id, 'shipping_address_1', $application_data['address_line_1']);
+        update_user_meta($user_id, 'shipping_address_2', $application_data['address_line_2']);
+        update_user_meta($user_id, 'shipping_city', $application_data['city']);
+        update_user_meta($user_id, 'shipping_state', $application_data['state']);
+        update_user_meta($user_id, 'shipping_postcode', $application_data['zip']);
+        update_user_meta($user_id, 'shipping_country', $application_data['country']);
+
+        // Store legacy address field for backward compatibility
         $address_parts = [
             $application_data['address_line_1'],
             $application_data['address_line_2'],
@@ -268,11 +290,10 @@ class OX_Applicants_FluentForms {
             $application_data['zip'],
             $application_data['country']
         ];
-        
         $address = implode("\n", array_filter($address_parts));
         update_user_meta($user_id, 'address', $address);
 
-        // Store phone
+        // Store phone in legacy field for backward compatibility
         if (!empty($application_data['phone'])) {
             update_user_meta($user_id, 'phone', $application_data['phone']);
         }

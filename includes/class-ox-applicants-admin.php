@@ -25,6 +25,9 @@ class OX_Applicants_Admin {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         add_action('wp_ajax_ox_update_application_status', [$this, 'handle_status_update']);
         add_action('wp_ajax_ox_lookup_product', [$this, 'handle_product_lookup']);
+        
+        // Prevent standard order emails for subscription orders created by our plugin
+        add_filter('woocommerce_email_enabled_customer_on_hold_order', [$this, 'maybe_disable_order_email'], 10, 2);
     }
 
     /**
@@ -78,13 +81,16 @@ class OX_Applicants_Admin {
      */
     public function init_settings(): void {
         register_setting('ox_applicants_options', 'ox_applicants_subscription_product_id');
+        register_setting('ox_applicants_options', 'ox_applicants_email_template', [
+            'sanitize_callback' => [$this, 'sanitize_email_template']
+        ]);
     }
 
     /**
      * Enqueue admin scripts
      */
     public function enqueue_admin_scripts($hook): void {
-        if (strpos($hook, 'ox-applications') === false && strpos($hook, 'ox-applicants-renewals') === false) {
+        if (strpos($hook, 'ox-applications') === false && strpos($hook, 'ox-renewals') === false) {
             return;
         }
 
@@ -563,6 +569,7 @@ class OX_Applicants_Admin {
         }
 
         $subscription_product_id = get_option('ox_applicants_subscription_product_id', '');
+        $email_template = get_option('ox_applicants_email_template', $this->get_default_email_template());
         $product_name = '';
         
         // Get product name if ID exists
@@ -600,6 +607,101 @@ class OX_Applicants_Admin {
                             <p class="description">
                                 <?php _e('Enter the WooCommerce subscription product ID that will be used for new members.', 'ox-applicants'); ?>
                             </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="email_template"><?php _e('Acceptance Email Template', 'ox-applicants'); ?></label>
+                        </th>
+                        <td>
+                            <textarea name="email_template" id="email_template" rows="20" cols="80" class="large-text code"><?php echo esc_textarea($email_template); ?></textarea>
+                            <p class="description">
+                                <?php _e('HTML email template for acceptance notifications. Use the variables below to insert dynamic content:', 'ox-applicants'); ?>
+                            </p>
+                            <div class="email-template-variables" style="background: #f9f9f9; padding: 15px; border: 1px solid #ddd; margin-top: 10px;">
+                                <h4><?php _e('Available Variables:', 'ox-applicants'); ?></h4>
+                                <table class="widefat" style="margin-top: 10px;">
+                                    <thead>
+                                        <tr>
+                                            <th><?php _e('Variable', 'ox-applicants'); ?></th>
+                                            <th><?php _e('Description', 'ox-applicants'); ?></th>
+                                            <th><?php _e('Example', 'ox-applicants'); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>{customer_first_name}</code></td>
+                                            <td><?php _e('Customer first name', 'ox-applicants'); ?></td>
+                                            <td>John</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{customer_last_name}</code></td>
+                                            <td><?php _e('Customer last name', 'ox-applicants'); ?></td>
+                                            <td>Doe</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{customer_email}</code></td>
+                                            <td><?php _e('Customer email address', 'ox-applicants'); ?></td>
+                                            <td>john@example.com</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{product_name}</code></td>
+                                            <td><?php _e('Subscription product name', 'ox-applicants'); ?></td>
+                                            <td>Premium Membership</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{product_price}</code></td>
+                                            <td><?php _e('Formatted product price', 'ox-applicants'); ?></td>
+                                            <td>$29.99</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{billing_cycle}</code></td>
+                                            <td><?php _e('Billing cycle (e.g., Monthly, Weekly)', 'ox-applicants'); ?></td>
+                                            <td>Monthly</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{next_payment_date}</code></td>
+                                            <td><?php _e('Next payment date', 'ox-applicants'); ?></td>
+                                            <td>January 15, 2025</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{order_number}</code></td>
+                                            <td><?php _e('Order number', 'ox-applicants'); ?></td>
+                                            <td>#1234</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{payment_url}</code></td>
+                                            <td><?php _e('Secure payment link', 'ox-applicants'); ?></td>
+                                            <td>https://example.com/checkout/pay/1234/</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{password_setup_url}</code></td>
+                                            <td><?php _e('Link for new user to set up password', 'ox-applicants'); ?></td>
+                                            <td>https://example.com/wp-login.php?login=john&key=abc123&action=rp</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{billing_address}</code></td>
+                                            <td><?php _e('Formatted billing address', 'ox-applicants'); ?></td>
+                                            <td>123 Main St, City, State 12345</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{billing_phone}</code></td>
+                                            <td><?php _e('Billing phone number', 'ox-applicants'); ?></td>
+                                            <td>+1-555-123-4567</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{site_name}</code></td>
+                                            <td><?php _e('Website name', 'ox-applicants'); ?></td>
+                                            <td>My Website</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>{site_url}</code></td>
+                                            <td><?php _e('Website URL', 'ox-applicants'); ?></td>
+                                            <td>https://example.com</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </td>
                     </tr>
                 </table>
@@ -750,11 +852,16 @@ class OX_Applicants_Admin {
                         class="button <?php echo $filter === 'next_month' ? 'button-primary' : ''; ?>">
                     <?php _e('Next Month', 'ox-applicants'); ?> (<?php echo $filter_counts['next_month']; ?>)
                 </button>
+                <button type="button" 
+                        onclick="window.location.href='<?php echo add_query_arg('filter', 'last_month'); ?>'" 
+                        class="button <?php echo $filter === 'last_month' ? 'button-primary' : ''; ?>">
+                    <?php _e('Last Month', 'ox-applicants'); ?> (<?php echo $filter_counts['last_month']; ?>)
+                </button>
                 
                 <!-- Custom Date Range Form -->
                 <div class="ox-custom-date-range">
                     <form method="get" style="display: inline-block; margin-left: 10px;">
-                        <input type="hidden" name="page" value="ox-applicants-renewals">
+                        <input type="hidden" name="page" value="ox-renewals">
                         <input type="hidden" name="filter" value="custom">
                         <label for="custom_start"><?php _e('From:', 'ox-applicants'); ?></label>
                         <input type="date" id="custom_start" name="custom_start" value="<?php echo esc_attr($custom_start); ?>" style="margin: 0 5px;">
@@ -867,6 +974,7 @@ class OX_Applicants_Admin {
         }
 
         $subscription_product_id = isset($_POST['subscription_product_id']) ? sanitize_text_field($_POST['subscription_product_id']) : '';
+        $email_template = isset($_POST['email_template']) ? wp_kses_post($_POST['email_template']) : '';
         
         // Convert to integer if not empty
         if (!empty($subscription_product_id)) {
@@ -887,6 +995,7 @@ class OX_Applicants_Admin {
         }
 
         update_option('ox_applicants_subscription_product_id', $subscription_product_id);
+        update_option('ox_applicants_email_template', $email_template);
         add_settings_error(
             'ox_applicants',
             'settings_updated',
@@ -1166,8 +1275,8 @@ class OX_Applicants_Admin {
             update_post_meta($application_id, '_subscription_id', $subscription_result['subscription_id']);
             update_post_meta($application_id, '_order_id', $subscription_result['order_id']);
             
-            // 5. Send notification email
-            $this->send_acceptance_notification($user_id, $application_id);
+            // 5. Send manual renewal notification email instead of standard order email
+            $this->send_manual_renewal_notification($subscription_result['subscription_id']);
             
             error_log("OX Applicants: Application {$application_id} acceptance process completed successfully");
             
@@ -1213,91 +1322,230 @@ class OX_Applicants_Admin {
      * - Enhanced logging and cleanup
      */
     private function create_woocommerce_subscription(int $user_id, int $product_id, int $application_id): array {
+        error_log("OX Applicants: Starting subscription creation for user {$user_id}, product {$product_id}, application {$application_id}");
+        
         try {
             // Validate input parameters
             if (!is_numeric($user_id) || $user_id <= 0) {
+                error_log("OX Applicants: ERROR - Invalid user ID: {$user_id}");
                 return ['success' => false, 'error' => 'Invalid user ID', 'subscription_id' => 0, 'order_id' => 0];
             }
             if (!is_numeric($product_id) || $product_id <= 0) {
+                error_log("OX Applicants: ERROR - Invalid product ID: {$product_id}");
                 return ['success' => false, 'error' => 'Invalid product ID', 'subscription_id' => 0, 'order_id' => 0];
             }
             if (!class_exists('WC_Subscriptions')) {
+                error_log("OX Applicants: ERROR - WooCommerce Subscriptions class not found");
                 return ['success' => false, 'error' => 'WooCommerce Subscriptions plugin is not active', 'subscription_id' => 0, 'order_id' => 0];
             }
+            
+            // Check for other WooCommerce Subscriptions classes
+            error_log("OX Applicants: Checking WooCommerce Subscriptions classes...");
+            error_log("OX Applicants: WC_Subscriptions exists: " . (class_exists('WC_Subscriptions') ? 'yes' : 'no'));
+            error_log("OX Applicants: WC_Subscriptions_Manager exists: " . (class_exists('WC_Subscriptions_Manager') ? 'yes' : 'no'));
+            error_log("OX Applicants: WC_Subscriptions_Product exists: " . (class_exists('WC_Subscriptions_Product') ? 'yes' : 'no'));
 
             // Get user data
             $user = get_user_by('id', $user_id);
             if (!$user) {
+                error_log("OX Applicants: ERROR - User {$user_id} not found");
                 return ['success' => false, 'error' => 'User not found', 'subscription_id' => 0, 'order_id' => 0];
             }
+            error_log("OX Applicants: Found user {$user_id}: {$user->user_email}");
 
             // Get product
             $product = wc_get_product($product_id);
-            if (!$product || !WC_Subscriptions_Product::is_subscription($product)) {
-                return ['success' => false, 'error' => 'Invalid subscription product', 'subscription_id' => 0, 'order_id' => 0];
+            if (!$product) {
+                error_log("OX Applicants: ERROR - Product {$product_id} not found");
+                return ['success' => false, 'error' => 'Product not found', 'subscription_id' => 0, 'order_id' => 0];
             }
+            if (!WC_Subscriptions_Product::is_subscription($product)) {
+                error_log("OX Applicants: ERROR - Product {$product_id} is not a subscription product");
+                return ['success' => false, 'error' => 'Product is not a subscription product', 'subscription_id' => 0, 'order_id' => 0];
+            }
+            error_log("OX Applicants: Found subscription product {$product_id}: {$product->get_name()}");
 
-            // Create order using wcs_create_order if available, otherwise fallback to wc_create_order
-            if (function_exists('wcs_create_order')) {
-                $order = wcs_create_order();
-            } else {
-                $order = wc_create_order();
+            // Create order using standard WooCommerce method
+            error_log("OX Applicants: Creating order using wc_create_order()...");
+            
+            if (!function_exists('wc_create_order')) {
+                error_log("OX Applicants: ERROR - wc_create_order function not available");
+                return ['success' => false, 'error' => 'WooCommerce order creation function not available', 'subscription_id' => 0, 'order_id' => 0];
             }
             
+            $order = wc_create_order();
+            if (!$order) {
+                error_log("OX Applicants: ERROR - Failed to create order");
+                return ['success' => false, 'error' => 'Failed to create order', 'subscription_id' => 0, 'order_id' => 0];
+            }
+            
+            if (!$order) {
+                error_log("OX Applicants: ERROR - Failed to create order");
+                return ['success' => false, 'error' => 'Failed to create order', 'subscription_id' => 0, 'order_id' => 0];
+            }
+            
+            error_log("OX Applicants: Order created with ID: {$order->get_id()}");
             $order->set_customer_id($user_id);
 
-            // Set billing and shipping address with fallbacks
-            $user_meta = get_user_meta($user_id);
-            $first_name = $user_meta['first_name'][0] ?? $user->user_firstname ?? '';
-            $last_name = $user_meta['last_name'][0] ?? $user->user_lastname ?? '';
-            $phone = $user_meta['phone'][0] ?? '';
-            
-            $address_data = [
-                'first_name' => $first_name,
-                'last_name' => $last_name,
-                'email' => $user->user_email,
-                'phone' => $phone,
+            // Set billing and shipping address using WooCommerce user meta fields
+            $billing_data = [
+                'first_name' => get_user_meta($user_id, 'billing_first_name', true) ?: $user->user_firstname ?: '',
+                'last_name' => get_user_meta($user_id, 'billing_last_name', true) ?: $user->user_lastname ?: '',
+                'email' => get_user_meta($user_id, 'billing_email', true) ?: $user->user_email,
+                'phone' => get_user_meta($user_id, 'billing_phone', true) ?: '',
+                'address_1' => get_user_meta($user_id, 'billing_address_1', true) ?: '',
+                'address_2' => get_user_meta($user_id, 'billing_address_2', true) ?: '',
+                'city' => get_user_meta($user_id, 'billing_city', true) ?: '',
+                'state' => get_user_meta($user_id, 'billing_state', true) ?: '',
+                'postcode' => get_user_meta($user_id, 'billing_postcode', true) ?: '',
+                'country' => get_user_meta($user_id, 'billing_country', true) ?: '',
             ];
             
-            $order->set_address($address_data, 'billing');
-            $order->set_address($address_data, 'shipping');
+            $shipping_data = [
+                'first_name' => get_user_meta($user_id, 'shipping_first_name', true) ?: $user->user_firstname ?: '',
+                'last_name' => get_user_meta($user_id, 'shipping_last_name', true) ?: $user->user_lastname ?: '',
+                'address_1' => get_user_meta($user_id, 'shipping_address_1', true) ?: '',
+                'address_2' => get_user_meta($user_id, 'shipping_address_2', true) ?: '',
+                'city' => get_user_meta($user_id, 'shipping_city', true) ?: '',
+                'state' => get_user_meta($user_id, 'shipping_state', true) ?: '',
+                'postcode' => get_user_meta($user_id, 'shipping_postcode', true) ?: '',
+                'country' => get_user_meta($user_id, 'shipping_country', true) ?: '',
+            ];
+            
+            error_log("OX Applicants: Setting order addresses...");
+            $order->set_address($billing_data, 'billing');
+            $order->set_address($shipping_data, 'shipping');
 
             // Add subscription product to order with metadata
+            error_log("OX Applicants: Adding product to order...");
             $item_id = $order->add_product($product, 1);
+            if (!$item_id) {
+                error_log("OX Applicants: ERROR - Failed to add product to order");
+                $order->delete(true);
+                return ['success' => false, 'error' => 'Failed to add product to order', 'subscription_id' => 0, 'order_id' => 0];
+            }
+            error_log("OX Applicants: Product added to order with item ID: {$item_id}");
             
-            // Add subscription-specific metadata
+            // Get subscription product details
+            $period = WC_Subscriptions_Product::get_period($product);
+            $interval = WC_Subscriptions_Product::get_interval($product);
+            $length = WC_Subscriptions_Product::get_length($product);
+            
+            error_log("OX Applicants: Subscription period: {$period}, interval: {$interval}, length: {$length}");
+            
+            // Add subscription-specific metadata to order item
+            error_log("OX Applicants: Adding subscription metadata to order item...");
             if (function_exists('wc_add_order_item_meta')) {
-                wc_add_order_item_meta($item_id, '_subscription_period', WC_Subscriptions_Product::get_period($product));
-                wc_add_order_item_meta($item_id, '_subscription_interval', WC_Subscriptions_Product::get_interval($product));
+                wc_add_order_item_meta($item_id, '_subscription_period', $period);
+                wc_add_order_item_meta($item_id, '_subscription_interval', $interval);
+                wc_add_order_item_meta($item_id, '_subscription_length', $length);
+                wc_add_order_item_meta($item_id, '_subscription_trial_length', WC_Subscriptions_Product::get_trial_length($product));
+                wc_add_order_item_meta($item_id, '_subscription_trial_period', WC_Subscriptions_Product::get_trial_period($product));
+                wc_add_order_item_meta($item_id, '_subscription_sign_up_fee', WC_Subscriptions_Product::get_sign_up_fee($product));
+            } else {
+                error_log("OX Applicants: ERROR - wc_add_order_item_meta function not available");
+                $order->delete(true);
+                return ['success' => false, 'error' => 'WooCommerce order item meta function not available', 'subscription_id' => 0, 'order_id' => 0];
             }
 
             // Set payment method and calculate totals
-            $order->set_payment_method('manual');
+            error_log("OX Applicants: Setting payment method and calculating totals...");
+            // For manual renewals, leave payment method empty - this triggers manual renewal logic
+            $order->set_payment_method('');
+            $order->set_payment_method_title('Manual Renewal');
             $order->calculate_totals();
 
-            // Set order status to "on-hold" using update_status for proper hooks
-            $order->update_status('on-hold', 'Order created programmatically for manual renewal subscription.');
+            // Add subscription metadata to order
+            error_log("OX Applicants: Adding subscription metadata to order...");
+            $order->add_meta_data('_subscription_period', $period);
+            $order->add_meta_data('_subscription_interval', $interval);
+            $order->add_meta_data('_subscription_length', $length);
+            $order->add_meta_data('_subscription_trial_length', WC_Subscriptions_Product::get_trial_length($product));
+            $order->add_meta_data('_subscription_trial_period', WC_Subscriptions_Product::get_trial_period($product));
+            $order->add_meta_data('_subscription_sign_up_fee', WC_Subscriptions_Product::get_sign_up_fee($product));
             $order->add_meta_data('_application_id', $application_id);
+            
+            // Set order status to "pending" for payment - on-hold orders don't show payment options
+            error_log("OX Applicants: Setting order status to pending...");
+            $order->update_status('pending', 'Order created programmatically for manual renewal subscription.');
             $order->save();
+            error_log("OX Applicants: Order saved with status: {$order->get_status()}");
 
-            // Get the subscription from the order
-            $subscriptions = wcs_get_subscriptions_for_order($order->get_id());
-            if (empty($subscriptions)) {
-                $order->delete(true); // Clean up the order if subscription creation fails
-                return ['success' => false, 'error' => 'Failed to create subscription from order', 'subscription_id' => 0, 'order_id' => 0];
+            // Use the documented wcs_create_subscription() function
+            error_log("OX Applicants: Using documented wcs_create_subscription() function...");
+            
+            if (!function_exists('wcs_create_subscription')) {
+                error_log("OX Applicants: ERROR - wcs_create_subscription function not available");
+                $order->delete(true);
+                return ['success' => false, 'error' => 'WooCommerce Subscriptions wcs_create_subscription function not available', 'subscription_id' => 0, 'order_id' => 0];
             }
-            $subscription = reset($subscriptions);
-
-            // Set subscription status, dates, and metadata
-            $start_date = current_time('mysql');
-            $subscription->set_date_created($start_date);
-            $subscription->set_date('start', $start_date);
-            $subscription->set_payment_method('manual');
+            
+            // Create subscription using the documented function
+            $subscription = wcs_create_subscription(array(
+                'order_id' => $order->get_id(),
+                'customer_id' => $user_id,
+                'start_date' => current_time('mysql'),
+                'status' => 'on-hold',
+                'billing_period' => $period,
+                'billing_interval' => $interval,
+                'customer_note' => 'Subscription created programmatically for manual renewal.'
+            ));
+            
+            if (is_wp_error($subscription)) {
+                error_log("OX Applicants: ERROR - Failed to create subscription: " . $subscription->get_error_message());
+                $order->delete(true);
+                return ['success' => false, 'error' => 'Failed to create subscription: ' . $subscription->get_error_message(), 'subscription_id' => 0, 'order_id' => 0];
+            }
+            
+            error_log("OX Applicants: Successfully created subscription: {$subscription->get_id()}");
+            
+            // Add the product to the subscription
+            $item_id = $subscription->add_product($product, 1);
+            if (!$item_id) {
+                error_log("OX Applicants: ERROR - Failed to add product to subscription");
+                $subscription->delete(true);
+                $order->delete(true);
+                return ['success' => false, 'error' => 'Failed to add product to subscription', 'subscription_id' => 0, 'order_id' => 0];
+            }
+            
+            // Copy order address to subscription
+            if (function_exists('wcs_copy_order_address')) {
+                wcs_copy_order_address($order, $subscription);
+            }
+            
+            // Set subscription dates
+            $subscription->update_dates(array(
+                'trial_end' => WC_Subscriptions_Product::get_trial_expiration_date($product, current_time('mysql')),
+                'next_payment' => WC_Subscriptions_Product::get_first_renewal_payment_date($product, current_time('mysql')),
+                'end' => WC_Subscriptions_Product::get_expiration_date($product, current_time('mysql'))
+            ));
+            
+            // Set payment method and manual renewal flag
+            // For manual renewals, leave payment method empty - this triggers manual renewal logic
+            $subscription->set_payment_method('');
+            $subscription->set_requires_manual_renewal(true);
+            
+            // Add application metadata
             $subscription->add_meta_data('_application_id', $application_id);
-            $subscription->update_status('on-hold', 'Subscription created programmatically for manual renewal.');
+            
+            // Save the subscription
             $subscription->save();
+            
+            error_log("OX Applicants: Subscription configured and saved with status: {$subscription->get_status()}");
+
+            // Subscription is already configured above, just log the final status
+            error_log("OX Applicants: Final subscription status: {$subscription->get_status()}");
 
             error_log("OX Applicants: Created subscription {$subscription->get_id()} and order {$order->get_id()} for user {$user_id}, application {$application_id}");
+            
+            // Debug order payment method
+            error_log("OX Applicants: Order payment method: " . $order->get_payment_method());
+            error_log("OX Applicants: Order payment method title: " . $order->get_payment_method_title());
+            
+            // Debug subscription payment method
+            error_log("OX Applicants: Subscription payment method: " . $subscription->get_payment_method());
+            error_log("OX Applicants: Subscription requires manual renewal: " . ($subscription->get_requires_manual_renewal() ? 'yes' : 'no'));
+            error_log("OX Applicants: Subscription is manual: " . ($subscription->is_manual() ? 'yes' : 'no'));
 
             return [
                 'success' => true,
@@ -1316,31 +1564,238 @@ class OX_Applicants_Admin {
     }
 
     /**
-     * Send acceptance notification email
+     * Send custom acceptance notification email with subscription details
      */
-    private function send_acceptance_notification(int $user_id, int $application_id): void {
-        $user = get_user_by('id', $user_id);
-        if (!$user) {
-            error_log("OX Applicants: Cannot send notification - user {$user_id} not found");
+    private function send_manual_renewal_notification(int $subscription_id): void {
+        error_log("OX Applicants: Sending custom acceptance notification for subscription {$subscription_id}");
+        
+        // Get the subscription
+        $subscription = wcs_get_subscription($subscription_id);
+        if (!$subscription) {
+            error_log("OX Applicants: Cannot send notification - subscription {$subscription_id} not found");
             return;
         }
         
-        $to = $user->user_email;
-        $subject = 'Your Application Has Been Accepted!';
-        $message = "Dear " . $user->display_name . ",\n\n";
-        $message .= "Congratulations! Your application has been accepted.\n\n";
-        $message .= "You are now a member and can access member-only content.\n\n";
-        $message .= "Best regards,\nThe Team";
+        // Get the parent order
+        $order = $subscription->get_parent();
+        if (!$order) {
+            error_log("OX Applicants: Cannot send notification - no parent order found for subscription {$subscription_id}");
+            return;
+        }
         
-        $headers = ['Content-Type: text/plain; charset=UTF-8'];
+        // Get customer details
+        $customer_id = $subscription->get_customer_id();
+        $customer = get_user_by('id', $customer_id);
+        if (!$customer) {
+            error_log("OX Applicants: Cannot send notification - no customer found for subscription {$subscription_id}");
+            return;
+        }
         
+        // Get subscription product details
+        $items = $subscription->get_items();
+        $product = null;
+        $product_name = '';
+        $product_price = '';
+        
+        if (!empty($items)) {
+            $item = reset($items); // Get first item
+            $product = $item->get_product();
+            $product_name = $item->get_name();
+            $product_price = $subscription->get_formatted_line_subtotal($item);
+        }
+        
+        // Get subscription details
+        $billing_period = $subscription->get_billing_period();
+        $billing_interval = $subscription->get_billing_interval();
+        $next_payment_date = $subscription->get_date('next_payment');
+        $total = $subscription->get_total();
+        
+        // Format billing period
+        $billing_text = '';
+        if ($billing_interval > 1) {
+            $billing_text = sprintf('%d %ss', $billing_interval, $billing_period);
+        } else {
+            $billing_text = $billing_period;
+        }
+        
+        // Get payment link - try different methods for manual renewal orders
+        $payment_url = $order->get_checkout_payment_url();
+        
+        // Debug the payment URL and order details
+        error_log("OX Applicants: Generated payment URL: " . $payment_url);
+        error_log("OX Applicants: Order status: " . $order->get_status());
+        error_log("OX Applicants: Order needs payment: " . ($order->needs_payment() ? 'yes' : 'no'));
+        error_log("OX Applicants: Order contains subscription: " . (wcs_order_contains_subscription($order) ? 'yes' : 'no'));
+        error_log("OX Applicants: Order contains renewal: " . (wcs_order_contains_renewal($order) ? 'yes' : 'no'));
+        
+        // Debug payment gateways for this order
+        $available_gateways = WC()->payment_gateways->get_available_payment_gateways();
+        error_log("OX Applicants: Available payment gateways for order {$order->get_id()}: " . print_r(array_keys($available_gateways), true));
+        
+        // Check if manual renewals are enabled
+        $manual_renewals_enabled = wcs_is_manual_renewal_enabled();
+        error_log("OX Applicants: Manual renewals enabled: " . ($manual_renewals_enabled ? 'yes' : 'no'));
+        
+        // Check subscription payment method
+        error_log("OX Applicants: Subscription payment method: " . $subscription->get_payment_method());
+        error_log("OX Applicants: Subscription is manual: " . ($subscription->is_manual() ? 'yes' : 'no'));
+        
+        // Generate password setup link for new user
+        $password_setup_url = $this->generate_password_setup_url($customer);
+        
+        // Get billing address
+        $billing_address = $subscription->get_formatted_billing_address();
+        $billing_email = $subscription->get_billing_email();
+        $billing_phone = $subscription->get_billing_phone();
+        
+        // Get custom email template
+        $email_template = get_option('ox_applicants_email_template', $this->get_default_email_template());
+        
+        // Build email content
+        $to = $billing_email;
+        $subject = sprintf('Your Application Has Been Accepted - Subscription Invoice #%s', $order->get_order_number());
+        
+        // Process template with variables
+        $message = $this->process_email_template($email_template, $customer, $subscription, $order, $product_name, $product_price, $billing_text, $total, $next_payment_date, $payment_url, $billing_address, $password_setup_url);
+        
+        // Email headers
+        $headers = [
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . get_bloginfo('name') . ' <' . get_option('admin_email') . '>'
+        ];
+        
+        // Send email
         $sent = wp_mail($to, $subject, $message, $headers);
         
         if ($sent) {
-            error_log("OX Applicants: Acceptance notification sent to user {$user_id}");
+            error_log("OX Applicants: Custom acceptance notification sent to {$billing_email}");
         } else {
-            error_log("OX Applicants: Failed to send acceptance notification to user {$user_id}");
+            error_log("OX Applicants: Failed to send custom acceptance notification to {$billing_email}");
         }
+    }
+    
+    /**
+     * Generate HTML email content
+     */
+    private function get_custom_email_html($customer, $subscription, $order, $product_name, $product_price, $billing_text, $total, $next_payment_date, $payment_url, $billing_address): string {
+        $site_name = get_bloginfo('name');
+        $site_url = get_bloginfo('url');
+        
+        $html = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Application Accepted - Subscription Invoice</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px; margin-bottom: 30px; }
+                .content { background: #fff; padding: 30px; border: 1px solid #ddd; border-radius: 5px; }
+                .subscription-details { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
+                .payment-button { display: inline-block; background: #0073aa; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px; }
+                .billing-info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }
+                .highlight { background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 15px 0; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🎉 Your Application Has Been Accepted!</h1>
+                <p>Welcome to ' . esc_html($site_name) . '</p>
+            </div>
+            
+            <div class="content">
+                <p>Dear ' . esc_html($customer->get_first_name()) . ',</p>
+                
+                <p>Congratulations! Your application has been accepted and your membership is now active. You now have access to all member-only content and benefits.</p>
+                
+                <div class="highlight">
+                    <strong>Important:</strong> To complete your membership setup, please complete the payment for your subscription below.
+                </div>
+                
+                <h2>Subscription Details</h2>
+                <div class="subscription-details">
+                    <p><strong>Product:</strong> ' . esc_html($product_name) . '</p>
+                    <p><strong>Billing Cycle:</strong> ' . esc_html(ucfirst($billing_text)) . '</p>
+                    <p><strong>Amount:</strong> ' . esc_html($product_price) . '</p>
+                    <p><strong>Next Payment:</strong> ' . esc_html($next_payment_date ? date('F j, Y', strtotime($next_payment_date)) : 'N/A') . '</p>
+                    <p><strong>Order Number:</strong> #' . esc_html($order->get_order_number()) . '</p>
+                </div>
+                
+                <h2>Billing Information</h2>
+                <div class="billing-info">
+                    ' . nl2br(esc_html($billing_address)) . '
+                    <br><strong>Email:</strong> ' . esc_html($subscription->get_billing_email()) . '
+                    ' . ($subscription->get_billing_phone() ? '<br><strong>Phone:</strong> ' . esc_html($subscription->get_billing_phone()) : '') . '
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="' . esc_url($payment_url) . '" class="payment-button">Complete Payment Now</a>
+                </div>
+                
+                <p><strong>Payment Link:</strong> <a href="' . esc_url($payment_url) . '">' . esc_url($payment_url) . '</a></p>
+                
+                <p>If you have any questions about your subscription or need assistance, please don\'t hesitate to contact us.</p>
+                
+                <p>Thank you for choosing ' . esc_html($site_name) . '!</p>
+                
+                <p>Best regards,<br>The ' . esc_html($site_name) . ' Team</p>
+            </div>
+            
+            <div class="footer">
+                <p>This email was sent from ' . esc_html($site_name) . '<br>
+                <a href="' . esc_url($site_url) . '">' . esc_url($site_url) . '</a></p>
+            </div>
+        </body>
+        </html>';
+        
+        return $html;
+    }
+    
+    /**
+     * Generate plain text email content
+     */
+    private function get_custom_email_plain($customer, $subscription, $order, $product_name, $product_price, $billing_text, $total, $next_payment_date, $payment_url, $billing_address): string {
+        $site_name = get_bloginfo('name');
+        
+        $message = "Your Application Has Been Accepted!\n\n";
+        $message .= "Dear " . $customer->get_first_name() . ",\n\n";
+        $message .= "Congratulations! Your application has been accepted and your membership is now active. You now have access to all member-only content and benefits.\n\n";
+        $message .= "IMPORTANT: To complete your membership setup, please complete the payment for your subscription.\n\n";
+        $message .= "SUBSCRIPTION DETAILS:\n";
+        $message .= "Product: " . $product_name . "\n";
+        $message .= "Billing Cycle: " . ucfirst($billing_text) . "\n";
+        $message .= "Amount: " . $product_price . "\n";
+        $message .= "Next Payment: " . ($next_payment_date ? date('F j, Y', strtotime($next_payment_date)) : 'N/A') . "\n";
+        $message .= "Order Number: #" . $order->get_order_number() . "\n\n";
+        $message .= "BILLING INFORMATION:\n";
+        $message .= $billing_address . "\n";
+        $message .= "Email: " . $subscription->get_billing_email() . "\n";
+        if ($subscription->get_billing_phone()) {
+            $message .= "Phone: " . $subscription->get_billing_phone() . "\n";
+        }
+        $message .= "\n";
+        $message .= "PAYMENT LINK:\n";
+        $message .= $payment_url . "\n\n";
+        $message .= "If you have any questions about your subscription or need assistance, please don't hesitate to contact us.\n\n";
+        $message .= "Thank you for choosing " . $site_name . "!\n\n";
+        $message .= "Best regards,\nThe " . $site_name . " Team";
+        
+        return $message;
+    }
+    
+    /**
+     * Maybe disable the standard order email for subscription orders created by our plugin
+     */
+    public function maybe_disable_order_email($enabled, $order) {
+        // Check if this order has an application_id meta (created by our plugin)
+        if ($order && $order->get_meta('_application_id')) {
+            error_log("OX Applicants: Disabling standard order email for order {$order->get_id()} (created by our plugin)");
+            return false;
+        }
+        
+        return $enabled;
     }
 
     /**
@@ -1394,6 +1849,12 @@ class OX_Applicants_Admin {
                     $include_subscription = ($next_payment_timestamp >= $next_month_start && $next_payment_timestamp <= $next_month_end);
                     break;
                     
+                case 'last_month':
+                    $last_month_start = strtotime('first day of last month', $current_time);
+                    $last_month_end = strtotime('last day of last month', $current_time);
+                    $include_subscription = ($next_payment_timestamp >= $last_month_start && $next_payment_timestamp <= $last_month_end);
+                    break;
+                    
                 case 'custom':
                     if (!empty($custom_start) && !empty($custom_end)) {
                         $custom_start_timestamp = strtotime($custom_start);
@@ -1404,8 +1865,8 @@ class OX_Applicants_Admin {
             }
             
             if ($include_subscription) {
-                $customer = $subscription->get_customer();
-                $customer_id = $customer ? $customer->get_id() : 0;
+                $customer_id = $subscription->get_customer_id();
+                $customer = $customer_id ? get_user_by('id', $customer_id) : null;
                 
                 // Get the first line item (assuming single product subscriptions)
                 $items = $subscription->get_items();
@@ -1424,8 +1885,8 @@ class OX_Applicants_Admin {
                 $filtered_subscriptions[] = [
                     'id' => $subscription->get_id(),
                     'customer_id' => $customer_id,
-                    'customer_name' => $customer ? $customer->get_display_name() : __('Unknown Customer', 'ox-applicants'),
-                    'customer_email' => $customer ? $customer->get_email() : '',
+                    'customer_name' => $customer ? $customer->display_name : __('Unknown Customer', 'ox-applicants'),
+                    'customer_email' => $customer ? $customer->user_email : '',
                     'product_name' => $product_name,
                     'next_payment_date' => $next_payment_date,
                     'renewal_method' => $renewal_method,
@@ -1508,7 +1969,8 @@ class OX_Applicants_Admin {
         $counts = [
             'next_30_days' => 0,
             'current_month' => 0,
-            'next_month' => 0
+            'next_month' => 0,
+            'last_month' => 0
         ];
         
         foreach (array_keys($counts) as $filter) {
@@ -1517,5 +1979,179 @@ class OX_Applicants_Admin {
         }
         
         return $counts;
+    }
+    
+    /**
+     * Sanitize email template
+     */
+    public function sanitize_email_template($template): string {
+        // Allow HTML but strip potentially dangerous tags
+        $allowed_html = [
+            'html' => [],
+            'head' => [],
+            'body' => [],
+            'meta' => ['charset' => [], 'name' => [], 'content' => []],
+            'title' => [],
+            'style' => [],
+            'div' => ['class' => [], 'style' => [], 'id' => []],
+            'p' => ['class' => [], 'style' => []],
+            'h1' => ['class' => [], 'style' => []],
+            'h2' => ['class' => [], 'style' => []],
+            'h3' => ['class' => [], 'style' => []],
+            'h4' => ['class' => [], 'style' => []],
+            'h5' => ['class' => [], 'style' => []],
+            'h6' => ['class' => [], 'style' => []],
+            'span' => ['class' => [], 'style' => []],
+            'strong' => ['class' => [], 'style' => []],
+            'em' => ['class' => [], 'style' => []],
+            'br' => [],
+            'hr' => ['class' => [], 'style' => []],
+            'table' => ['class' => [], 'style' => [], 'border' => [], 'cellpadding' => [], 'cellspacing' => []],
+            'thead' => ['class' => [], 'style' => []],
+            'tbody' => ['class' => [], 'style' => []],
+            'tr' => ['class' => [], 'style' => []],
+            'th' => ['class' => [], 'style' => [], 'colspan' => [], 'rowspan' => []],
+            'td' => ['class' => [], 'style' => [], 'colspan' => [], 'rowspan' => []],
+            'a' => ['href' => [], 'class' => [], 'style' => [], 'target' => []],
+            'img' => ['src' => [], 'alt' => [], 'class' => [], 'style' => [], 'width' => [], 'height' => []],
+            'ul' => ['class' => [], 'style' => []],
+            'ol' => ['class' => [], 'style' => []],
+            'li' => ['class' => [], 'style' => []],
+            'blockquote' => ['class' => [], 'style' => []],
+            'code' => ['class' => [], 'style' => []],
+        ];
+        
+        return wp_kses($template, $allowed_html);
+    }
+    
+    /**
+     * Get default email template
+     */
+    private function get_default_email_template(): string {
+        return '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Accepted - Subscription Invoice</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; border-radius: 5px; margin-bottom: 30px; }
+        .content { background: #fff; padding: 30px; border: 1px solid #ddd; border-radius: 5px; }
+        .subscription-details { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .payment-button { display: inline-block; background: #0073aa; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px; }
+        .billing-info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .highlight { background: #fff3cd; padding: 10px; border-left: 4px solid #ffc107; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎉 Your Application Has Been Accepted!</h1>
+        <p>Welcome to {site_name}</p>
+    </div>
+    
+    <div class="content">
+        <p>Dear {customer_first_name},</p>
+        
+        <p>Congratulations! Your application has been accepted and your membership is now active. You now have access to all member-only content and benefits.</p>
+        
+        <div class="highlight">
+            <strong>Important:</strong> To complete your membership setup, please follow these steps:
+            <ol>
+                <li><strong>Set up your account password</strong> (required first step)</li>
+                <li><strong>Log in to your account</strong> using your new password</li>
+                <li><strong>Complete the payment</strong> for your subscription</li>
+            </ol>
+        </div>
+        
+        <h2>Step 1: Account Setup</h2>
+        <p>Since this is your first time accessing your account, you need to set up your password first:</p>
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="{password_setup_url}" class="payment-button" style="background: #28a745;">Set Up Your Password</a>
+        </div>
+        <p><strong>Password Setup Link:</strong> <a href="{password_setup_url}">{password_setup_url}</a></p>
+        
+        <h2>Step 2: Complete Payment</h2>
+        <p>After setting up your password and logging in, you can complete your subscription payment:</p>
+        <div class="highlight" style="background: #e7f3ff; border-left-color: #0073aa;">
+            <strong>Note:</strong> You must be logged in to complete the payment. If you are not logged in when you click the payment link, you will be prompted to log in first.
+        </div>
+        <div class="highlight" style="background: #fff3cd; border-left-color: #ffc107;">
+            <strong>Troubleshooting:</strong> If you do not see any payment options on the payment page, please contact us. This may be due to payment gateway configuration.
+        </div>
+        
+        <h2>Subscription Details</h2>
+        <div class="subscription-details">
+            <p><strong>Product:</strong> {product_name}</p>
+            <p><strong>Billing Cycle:</strong> {billing_cycle}</p>
+            <p><strong>Amount:</strong> {product_price}</p>
+            <p><strong>Next Payment:</strong> {next_payment_date}</p>
+            <p><strong>Order Number:</strong> {order_number}</p>
+        </div>
+        
+        <h2>Billing Information</h2>
+        <div class="billing-info">
+            {billing_address}
+            <br><strong>Email:</strong> {customer_email}
+            {billing_phone}
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{payment_url}" class="payment-button">Complete Payment Now</a>
+        </div>
+        
+        <p><strong>Payment Link:</strong> <a href="{payment_url}">{payment_url}</a></p>
+        
+        <p>If you have any questions about your subscription or need assistance, please do not hesitate to contact us.</p>
+        
+        <p>Thank you for choosing {site_name}!</p>
+        
+        <p>Best regards,<br>The {site_name} Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>This email was sent from {site_name}<br>
+        <a href="{site_url}">{site_url}</a></p>
+    </div>
+</body>
+</html>';
+    }
+    
+    /**
+     * Generate password setup URL for new user
+     */
+    private function generate_password_setup_url($customer): string {
+        $key = get_password_reset_key($customer);
+        if (is_wp_error($key)) {
+            error_log("OX Applicants: Failed to generate password setup key for user {$customer->ID}");
+            return '';
+        }
+        
+        return network_site_url('wp-login.php?login=' . rawurlencode($customer->user_login) . "&key=$key&action=rp", 'login');
+    }
+    
+    /**
+     * Process email template variables
+     */
+    private function process_email_template($template, $customer, $subscription, $order, $product_name, $product_price, $billing_text, $total, $next_payment_date, $payment_url, $billing_address, $password_setup_url = ''): string {
+        $variables = [
+            '{customer_first_name}' => $customer->get_first_name(),
+            '{customer_last_name}' => $customer->get_last_name(),
+            '{customer_email}' => $subscription->get_billing_email(),
+            '{product_name}' => $product_name,
+            '{product_price}' => $product_price,
+            '{billing_cycle}' => ucfirst($billing_text),
+            '{next_payment_date}' => $next_payment_date ? date('F j, Y', strtotime($next_payment_date)) : 'N/A',
+            '{order_number}' => '#' . $order->get_order_number(),
+            '{payment_url}' => $payment_url,
+            '{billing_address}' => nl2br($billing_address),
+            '{billing_phone}' => $subscription->get_billing_phone() ? '<br><strong>Phone:</strong> ' . $subscription->get_billing_phone() : '',
+            '{site_name}' => get_bloginfo('name'),
+            '{site_url}' => get_bloginfo('url'),
+            '{password_setup_url}' => $password_setup_url,
+        ];
+        
+        return str_replace(array_keys($variables), array_values($variables), $template);
     }
 } 

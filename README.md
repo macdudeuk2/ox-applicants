@@ -15,7 +15,9 @@ A WordPress plugin for handling applicant form submissions, user creation, and a
 - **ACF Integration**: Stores custom fields if Advanced Custom Fields is available
 - **WooCommerce Subscriptions Integration**: Automatic subscription creation for accepted applications
 - **Renewal Management**: Dashboard for managing subscription renewals
-- **Email Notifications**: Custom email templates for application status changes
+- **Custom Email Templates**: Fully customizable acceptance notification emails with variable substitution
+- **Password Setup**: Automatic password setup links for new users
+- **Manual Renewal Support**: Proper manual renewal subscription creation with payment links
 
 ## Requirements
 
@@ -38,6 +40,30 @@ A WordPress plugin for handling applicant form submissions, user creation, and a
 Navigate to **Applications & Renewals > Settings** to configure:
 
 - **Subscription Product ID**: The WooCommerce subscription product to use for new members
+- **Custom Email Template**: HTML template for acceptance notification emails with variable substitution
+
+### Email Template Variables
+The custom email template supports the following variables:
+
+| Variable | Description |
+|----------|-------------|
+| `{customer_name}` | Customer's full name |
+| `{customer_first_name}` | Customer's first name |
+| `{customer_email}` | Customer's email address |
+| `{subscription_id}` | Subscription ID |
+| `{order_id}` | Order ID |
+| `{order_number}` | Order number |
+| `{product_name}` | Subscription product name |
+| `{product_price}` | Formatted product price |
+| `{billing_period}` | Billing period (e.g., "week", "month") |
+| `{billing_text}` | Formatted billing text (e.g., "weekly", "monthly") |
+| `{total}` | Formatted order total |
+| `{next_payment_date}` | Next payment date |
+| `{payment_url}` | Direct payment link for the order |
+| `{password_setup_url}` | Secure link for setting initial password |
+| `{billing_address}` | Formatted billing address |
+| `{billing_email}` | Billing email address |
+| `{billing_phone}` | Billing phone number |
 
 ### FluentForms Setup
 The plugin automatically processes submissions from FluentForms form ID 3 ("Apply to Join"). Ensure your form has the following fields:
@@ -59,15 +85,19 @@ The plugin automatically creates two user roles if they don't exist:
 ### Application Workflow
 
 1. **Form Submission**: User submits application via FluentForms
-2. **User Creation**: WordPress user account created with "Applicant" role
+2. **User Creation**: WordPress user account created with "Applicant" role (no password)
 3. **Application Review**: Admin reviews application in Applications & Renewals > Applications
 4. **Status Management**: Admin can set status to New, On Hold, Accepted, or Rejected
 5. **Acceptance Process**: When accepted:
    - User role changes to "Member"
    - "member" tag added to ox-content-blocker
    - WooCommerce subscription created (manual renewal, on-hold status)
-   - Order created (awaiting payment)
-   - Acceptance email sent to user
+   - Order created (pending status, awaiting payment)
+   - Custom acceptance email sent to user with:
+     - Password setup link
+     - Payment link
+     - Subscription details
+     - Billing information
 
 ### Admin Interface
 
@@ -83,10 +113,13 @@ The plugin automatically creates two user roles if they don't exist:
 - View user profile link
 - View subscription and order links (if created)
 - Track acceptance metadata
+- Persistent success messages
 
 #### Renewals Page
 - View all subscriptions due for renewal
-- Filter by: Next 30 Days, Current Month, Next Month
+- Filter by: Next 30 Days, Current Month, Next Month, Last Month
+- Custom date range filtering
+- Export to CSV functionality
 - Shows subscription ID, customer, product, next payment date, renewal method, status
 - Click subscription ID to edit in WooCommerce
 
@@ -94,15 +127,19 @@ The plugin automatically creates two user roles if they don't exist:
 - Configure subscription product ID
 - Product lookup functionality
 - Validation of subscription products
+- Custom email template editor with variable documentation
+- Template sanitization and validation
 
 ## Database Schema
 
 ### Custom Post Type: `ox_application`
 - Stores application data with status tracking
 - Meta fields for user ID, status, dates, subscription references
+- Last action date tracking
 
 ### User Meta
 - ACF fields: `wine_course`, `course_info`
+- WooCommerce billing/shipping fields: `billing_first_name`, `billing_last_name`, `billing_address_1`, etc.
 - ox-content-blocker tags: `_oxcb_access_tags`
 
 ## Error Handling
@@ -112,6 +149,7 @@ The plugin includes comprehensive error handling:
 - **Database compatibility**: Detects SQLite and prevents subscription creation
 - **Validation**: Validates all inputs and dependencies
 - **Logging**: Detailed error logging for debugging
+- **Payment method validation**: Ensures proper manual renewal setup
 
 ## Development Notes
 
@@ -123,14 +161,26 @@ The plugin includes comprehensive error handling:
 ### Production (MySQL)
 - Full functionality including subscription creation
 - WooCommerce Subscriptions integration works seamlessly
-- All features available
+- All features available including manual renewal payments
 
 ### Debugging
 - Check `wp-content/debug.log` for detailed error messages
 - All plugin actions are logged with "OX Applicants:" prefix
 - Error messages include context and rollback information
+- Payment gateway debugging for manual renewal orders
 
 ## Changelog
+
+### Version 1.1.0
+- **Custom Email Templates**: Added fully customizable HTML email templates for acceptance notifications
+- **Password Setup Links**: Automatic secure password setup links for new users
+- **Manual Renewal Fixes**: Proper order status (pending) and subscription status (on-hold) configuration
+- **Payment Link Integration**: Direct payment links in acceptance emails
+- **Enhanced Renewals Dashboard**: Added "Last Month" filter and custom date range functionality
+- **CSV Export**: Export renewals data to CSV format
+- **Improved Error Handling**: Better validation and rollback for subscription creation
+- **Template Variables**: Comprehensive variable substitution system for email templates
+- **WooCommerce Integration**: Proper billing/shipping address storage in WooCommerce fields
 
 ### Version 1.0.0
 - Initial release

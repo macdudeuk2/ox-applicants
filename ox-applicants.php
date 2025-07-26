@@ -3,7 +3,7 @@
  * Plugin Name: OX Applicants
  * Plugin URI: https://github.com/ox-applicants
  * Description: Handle applicant form submissions, user creation, and application management with WooCommerce Subscriptions integration.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Andy McLeod
  * License: GPL2+
  * Text Domain: ox-applicants
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 // Define plugin constants
 define('OX_APPLICANTS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('OX_APPLICANTS_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('OX_APPLICANTS_VERSION', '1.0.0');
+define('OX_APPLICANTS_VERSION', '1.1.0');
 define('OX_APPLICANTS_VERSION_OPTION', 'ox_applicants_version');
 
 // Check for required plugins
@@ -71,6 +71,10 @@ function ox_applicants_check_updates() {
             ox_applicants_update_to_1_0_0();
         }
         
+        if (version_compare($current_version, '1.1.0', '<')) {
+            ox_applicants_update_to_1_1_0();
+        }
+        
         update_option(OX_APPLICANTS_VERSION_OPTION, OX_APPLICANTS_VERSION);
         // error_log('OX Applicants: Update completed successfully');
     }
@@ -109,6 +113,25 @@ function ox_applicants_update_to_1_0_0() {
     flush_rewrite_rules();
     
     // error_log('OX Applicants: Version 1.0.0 update completed');
+}
+
+// Update to version 1.1.0
+function ox_applicants_update_to_1_1_0() {
+    // error_log('OX Applicants: Running update to version 1.1.0');
+    
+    // Add default email template option if it doesn't exist
+    if (!get_option('ox_applicants_email_template')) {
+        // Get the default template from the admin class
+        require_once OX_APPLICANTS_PLUGIN_DIR . 'includes/class-ox-applicants-admin.php';
+        $admin = new OX_Applicants_Admin();
+        $default_template = $admin->get_default_email_template();
+        add_option('ox_applicants_email_template', $default_template);
+    }
+    
+    // Flush rewrite rules for any potential changes
+    flush_rewrite_rules();
+    
+    // error_log('OX Applicants: Version 1.1.0 update completed');
 }
 
 // Activation hook

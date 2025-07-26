@@ -2027,7 +2027,7 @@ class OX_Applicants_Admin {
     /**
      * Get default email template
      */
-    private function get_default_email_template(): string {
+    public function get_default_email_template(): string {
         return '<!DOCTYPE html>
 <html>
 <head>

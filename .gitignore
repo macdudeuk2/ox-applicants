@@ -1,0 +1,57 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+debug.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build files (if any)
+build/
+dist/
+
+# Node modules (if using npm/yarn)
+node_modules/
+
+# Composer (if using)
+vendor/
+composer.lock
+
+# WordPress specific
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+wp-content/backup-db/
+wp-content/backups/
+wp-content/blogs.dir/
+wp-content/upgrade/
+wp-content/uploads/
+wp-content/mu-plugins/
+wp-content/wp-cache-config.php
+wp-content/plugins/hello.php
+
+# Database files
+*.sql
+*.sqlite
+*.db
+
+# Environment files
+.env
+.env.local
+.env.production 

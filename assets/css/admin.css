@@ -1,0 +1,279 @@
+/* OX Applicants Admin Styles */
+
+.ox-application-detail {
+    max-width: 800px;
+    margin-top: 20px;
+}
+
+.ox-application-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+}
+
+.ox-application-header h2 {
+    margin: 0;
+    color: #23282d;
+}
+
+.ox-application-status {
+    text-align: right;
+}
+
+.ox-application-content {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.ox-application-section {
+    padding: 20px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.ox-application-section:last-child {
+    border-bottom: none;
+}
+
+.ox-application-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #23282d;
+    font-size: 16px;
+}
+
+/* Status Badges */
+.ox-status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.status-new {
+    background-color: #0073aa;
+}
+
+.status-on-hold {
+    background-color: #ffb900;
+    color: #000;
+}
+
+.status-accepted {
+    background-color: #46b450;
+}
+
+.status-rejected {
+    background-color: #dc3232;
+}
+
+/* Status Form */
+.ox-status-form {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.ox-status-form label {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.ox-status-form select {
+    min-width: 150px;
+}
+
+/* Table Enhancements */
+.wp-list-table .column-status {
+    width: 100px;
+}
+
+/* Status Filter Links */
+.ox-status-filters {
+    margin: 20px 0;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.ox-filter-link {
+    text-decoration: none;
+    color: #0073aa;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.ox-filter-link:hover {
+    background-color: #f0f0f1;
+    color: #005a87;
+    text-decoration: none;
+}
+
+.ox-filter-link.active {
+    background-color: #0073aa;
+    color: #fff;
+    font-weight: 600;
+}
+
+.ox-filter-link.active:hover {
+    background-color: #005a87;
+    color: #fff;
+}
+
+.wp-list-table .column-email {
+    width: 200px;
+}
+
+.wp-list-table .column-date {
+    width: 150px;
+}
+
+/* Responsive Design */
+@media (max-width: 782px) {
+    .ox-application-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .ox-application-status {
+        text-align: left;
+    }
+    
+    .wp-list-table {
+        font-size: 14px;
+    }
+    
+    .wp-list-table .column-email,
+    .wp-list-table .column-date {
+        display: none;
+    }
+}
+
+/* Loading States */
+.ox-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.ox-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Notices */
+.ox-notice {
+    padding: 10px 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.ox-notice-success {
+    background-color: #d4edda;
+    border-color: #46b450;
+    color: #155724;
+}
+
+.ox-notice-error {
+    background-color: #f8d7da;
+    border-color: #dc3232;
+    color: #721c24;
+}
+
+.ox-notice-warning {
+    background-color: #fff3cd;
+    border-color: #ffb900;
+    color: #856404;
+}
+
+.ox-notice-info {
+    background-color: #d1ecf1;
+    border-color: #0073aa;
+    color: #0c5460;
+}
+
+/* Renewal Dashboard Styles */
+.ox-renewal-filters {
+    margin: 20px 0;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+}
+
+.ox-renewal-filters .ox-filter-link {
+    display: inline-block;
+    margin-right: 20px;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 3px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.ox-renewal-filters .ox-filter-link:hover {
+    background-color: #f0f0f1;
+    text-decoration: none;
+}
+
+.ox-renewal-filters .ox-filter-link.active {
+    background-color: #0073aa;
+    color: #fff;
+}
+
+.ox-renewal-filters .ox-filter-link.active:hover {
+    background-color: #005a87;
+    color: #fff;
+}
+
+.ox-renewals-table {
+    margin-top: 20px;
+}
+
+.ox-renewal-method {
+    display: inline-block;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.ox-renewal-method.manual {
+    background-color: #ffb900;
+    color: #000;
+}
+
+.ox-renewal-method.automatic {
+    background-color: #46b450;
+    color: #fff;
+} 

@@ -933,7 +933,12 @@ class OX_Applicants_Admin {
                                     </td>
                                     <td>
                                         <span class="ox-status-badge status-<?php echo $subscription['status']; ?>">
-                                            <?php echo esc_html(ucfirst($subscription['status'])); ?>
+                                            <?php 
+                                            $status_display = function_exists('wcs_get_subscription_status_name') ? 
+                                                wcs_get_subscription_status_name($subscription['status']) : 
+                                                ucfirst($subscription['status']);
+                                            echo esc_html($status_display); 
+                                            ?>
                                         </span>
                                     </td>
                                 </tr>
@@ -974,7 +979,7 @@ class OX_Applicants_Admin {
         }
 
         $subscription_product_id = isset($_POST['subscription_product_id']) ? sanitize_text_field($_POST['subscription_product_id']) : '';
-        $email_template = isset($_POST['email_template']) ? wp_kses_post($_POST['email_template']) : '';
+        $email_template = isset($_POST['email_template']) ? $this->sanitize_email_template($_POST['email_template']) : '';
         
         // Convert to integer if not empty
         if (!empty($subscription_product_id)) {
@@ -1873,14 +1878,10 @@ class OX_Applicants_Admin {
                 $first_item = reset($items);
                 $product_name = $first_item ? $first_item->get_name() : __('Unknown Product', 'ox-applicants');
                 
-                // Determine renewal method
-                $renewal_method = 'manual';
-                if (function_exists('wcs_get_subscription_payment_method')) {
-                    $payment_method = wcs_get_subscription_payment_method($subscription);
-                    if ($payment_method && $payment_method->supports('subscription_cancellation')) {
-                        $renewal_method = 'automatic';
-                    }
-                }
+                // Determine renewal method - use the correct method to check if subscription is manual
+                $renewal_method = $subscription->is_manual() ? 'manual' : 'automatic';
+                
+
                 
                 $filtered_subscriptions[] = [
                     'id' => $subscription->get_id(),
@@ -1987,12 +1988,12 @@ class OX_Applicants_Admin {
     public function sanitize_email_template($template): string {
         // Allow HTML but strip potentially dangerous tags
         $allowed_html = [
-            'html' => [],
+            'html' => ['lang' => [], 'xmlns' => []],
             'head' => [],
-            'body' => [],
-            'meta' => ['charset' => [], 'name' => [], 'content' => []],
+            'body' => ['class' => [], 'style' => []],
+            'meta' => ['charset' => [], 'name' => [], 'content' => [], 'http-equiv' => []],
             'title' => [],
-            'style' => [],
+            'style' => ['type' => [], 'media' => []],
             'div' => ['class' => [], 'style' => [], 'id' => []],
             'p' => ['class' => [], 'style' => []],
             'h1' => ['class' => [], 'style' => []],
@@ -2006,22 +2007,34 @@ class OX_Applicants_Admin {
             'em' => ['class' => [], 'style' => []],
             'br' => [],
             'hr' => ['class' => [], 'style' => []],
-            'table' => ['class' => [], 'style' => [], 'border' => [], 'cellpadding' => [], 'cellspacing' => []],
+            'table' => ['class' => [], 'style' => [], 'border' => [], 'cellpadding' => [], 'cellspacing' => [], 'width' => []],
             'thead' => ['class' => [], 'style' => []],
             'tbody' => ['class' => [], 'style' => []],
             'tr' => ['class' => [], 'style' => []],
             'th' => ['class' => [], 'style' => [], 'colspan' => [], 'rowspan' => []],
             'td' => ['class' => [], 'style' => [], 'colspan' => [], 'rowspan' => []],
-            'a' => ['href' => [], 'class' => [], 'style' => [], 'target' => []],
+            'a' => ['href' => [], 'class' => [], 'style' => [], 'target' => [], 'rel' => []],
             'img' => ['src' => [], 'alt' => [], 'class' => [], 'style' => [], 'width' => [], 'height' => []],
             'ul' => ['class' => [], 'style' => []],
             'ol' => ['class' => [], 'style' => []],
             'li' => ['class' => [], 'style' => []],
             'blockquote' => ['class' => [], 'style' => []],
             'code' => ['class' => [], 'style' => []],
+            'small' => ['class' => [], 'style' => []],
+            'b' => ['class' => [], 'style' => []],
+            'i' => ['class' => [], 'style' => []],
         ];
         
-        return wp_kses($template, $allowed_html);
+        // For debugging - log what's being stripped
+        $original_length = strlen($template);
+        $sanitized = wp_kses($template, $allowed_html);
+        $sanitized_length = strlen($sanitized);
+        
+        if ($original_length !== $sanitized_length) {
+            error_log("OX Applicants: Email template sanitization removed " . ($original_length - $sanitized_length) . " characters");
+        }
+        
+        return $sanitized;
     }
     
     /**

@@ -76,6 +76,32 @@
     background-color: #dc3232;
 }
 
+/* WooCommerce Subscription Status Badges */
+.status-active {
+    background-color: #46b450;
+}
+
+.status-on-hold {
+    background-color: #ffb900;
+    color: #000;
+}
+
+.status-pending-cancel {
+    background-color: #ff6b6b;
+}
+
+.status-cancelled {
+    background-color: #dc3232;
+}
+
+.status-expired {
+    background-color: #999;
+}
+
+.status-pending {
+    background-color: #0073aa;
+}
+
 /* Status Form */
 .ox-status-form {
     background: #f9f9f9;

@@ -26,6 +26,9 @@ class OX_Applicants_Admin {
         add_action('wp_ajax_ox_update_application_status', [$this, 'handle_status_update']);
         add_action('wp_ajax_ox_lookup_product', [$this, 'handle_product_lookup']);
         
+        // Handle CSV export at admin_init to prevent HTML output interference
+        add_action('admin_init', [$this, 'handle_csv_export']);
+        
         // Prevent standard order emails for subscription orders created by our plugin
         add_filter('woocommerce_email_enabled_customer_on_hold_order', [$this, 'maybe_disable_order_email'], 10, 2);
     }
@@ -768,12 +771,6 @@ class OX_Applicants_Admin {
             return;
         }
 
-        // Handle CSV export
-        if (isset($_GET['export']) && $_GET['export'] === 'csv') {
-            $this->export_renewals_csv();
-            return;
-        }
-
         // Get filter parameters
         $filter = $_GET['filter'] ?? 'next_30_days';
         $custom_start = $_GET['custom_start'] ?? '';
@@ -906,15 +903,8 @@ class OX_Applicants_Admin {
                                         </a>
                                     </td>
                                     <td>
-                                        <?php if ($subscription['customer_id']): ?>
-                                            <a href="<?php echo admin_url('user-edit.php?user_id=' . $subscription['customer_id']); ?>" target="_blank">
-                                                <?php echo esc_html($subscription['customer_name']); ?>
-                                            </a>
-                                            <br>
-                                            <small><?php echo esc_html($subscription['customer_email']); ?></small>
-                                        <?php else: ?>
-                                            <?php echo esc_html($subscription['customer_name']); ?>
-                                        <?php endif; ?>
+                                        <?php echo esc_html($subscription['customer_name']); ?>
+                                        <br><small><?php echo esc_html($subscription['customer_email']); ?></small>
                                     </td>
                                     <td><?php echo esc_html($subscription['product_name']); ?></td>
                                     <td>
@@ -1924,6 +1914,8 @@ class OX_Applicants_Admin {
         // Set headers for CSV download
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="renewals-' . date('Y-m-d') . '.csv"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
         
         // Create output stream
         $output = fopen('php://output', 'w');
@@ -2166,5 +2158,20 @@ class OX_Applicants_Admin {
         ];
         
         return str_replace(array_keys($variables), array_values($variables), $template);
+    }
+
+    /**
+     * Handle CSV export at admin_init stage to prevent HTML output interference
+     */
+    public function handle_csv_export(): void {
+        // Only handle CSV export for our renewals page
+        if (!isset($_GET['page']) || $_GET['page'] !== 'ox-renewals') {
+            return;
+        }
+        
+        // Check for CSV export request
+        if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+            $this->export_renewals_csv();
+        }
     }
 } 

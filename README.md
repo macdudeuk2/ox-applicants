@@ -171,6 +171,11 @@ The plugin includes comprehensive error handling:
 
 ## Changelog
 
+### Version 1.1.1
+- **CSV Export Fix**: Fixed issue where CSV export contained HTML content instead of clean CSV data
+- **Improved Export Handling**: Moved CSV export to admin_init stage to prevent WordPress admin content interference
+- **Better Separation of Concerns**: Separated display logic from export logic for cleaner code structure
+
 ### Version 1.1.0
 - **Custom Email Templates**: Added fully customizable HTML email templates for acceptance notifications
 - **Password Setup Links**: Automatic secure password setup links for new users
@@ -184,11 +189,6 @@ The plugin includes comprehensive error handling:
 
 ### Version 1.0.0
 - Initial release
-- FluentForms integration
-- Application management system
-- WooCommerce Subscriptions integration
-- Renewal dashboard
-- Comprehensive error handling and rollback
 
 ## Support
 

@@ -3,7 +3,7 @@
  * Plugin Name: OX Applicants
  * Plugin URI: https://github.com/ox-applicants
  * Description: Handle applicant form submissions, user creation, and application management with WooCommerce Subscriptions integration.
- * Version: 1.1.0
+ * Version: 1.1.1
  * Author: Andy McLeod
  * License: GPL2+
  * Text Domain: ox-applicants
@@ -23,7 +23,7 @@ if (!defined('ABSPATH')) {
 // Define plugin constants
 define('OX_APPLICANTS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('OX_APPLICANTS_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('OX_APPLICANTS_VERSION', '1.1.0');
+define('OX_APPLICANTS_VERSION', '1.1.1');
 define('OX_APPLICANTS_VERSION_OPTION', 'ox_applicants_version');
 
 // Check for required plugins
@@ -73,6 +73,10 @@ function ox_applicants_check_updates() {
         
         if (version_compare($current_version, '1.1.0', '<')) {
             ox_applicants_update_to_1_1_0();
+        }
+        
+        if (version_compare($current_version, '1.1.1', '<')) {
+            ox_applicants_update_to_1_1_1();
         }
         
         update_option(OX_APPLICANTS_VERSION_OPTION, OX_APPLICANTS_VERSION);
@@ -130,6 +134,19 @@ function ox_applicants_update_to_1_1_0() {
     flush_rewrite_rules();
     
     // error_log('OX Applicants: Version 1.1.0 update completed');
+}
+
+// Update to version 1.1.1
+function ox_applicants_update_to_1_1_1() {
+    // error_log('OX Applicants: Running update to version 1.1.1');
+    
+    // No database changes needed for this version
+    // This version only includes CSV export fixes
+    
+    // Flush rewrite rules for any potential changes
+    flush_rewrite_rules();
+    
+    // error_log('OX Applicants: Version 1.1.1 update completed');
 }
 
 // Helper function for default email template (can be called from global scope)

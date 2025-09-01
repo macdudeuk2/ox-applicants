@@ -171,6 +171,14 @@ The plugin includes comprehensive error handling:
 
 ## Changelog
 
+### Version 1.1.2
+- **Duplicate Application Handling**: Added comprehensive duplicate application detection and management
+- **New Application Status**: Introduced "duplicate" status for applications from existing users
+- **Enhanced Admin Interface**: Added duplicate warnings and existing user information display
+- **Improved User Experience**: No more silent rejections - all applications are now processed and stored
+- **Data Preservation**: All application data is preserved, even for duplicate submissions
+- **Admin Notifications**: Clear warnings and information about potential duplicate applications
+
 ### Version 1.1.1
 - **CSV Export Fix**: Fixed issue where CSV export contained HTML content instead of clean CSV data
 - **Improved Export Handling**: Moved CSV export to admin_init stage to prevent WordPress admin content interference

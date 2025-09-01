@@ -159,6 +159,7 @@ class OX_Applicants_Post_Types {
                 <option value="on_hold" <?php selected($status, 'on_hold'); ?>><?php _e('On Hold', 'ox-applicants'); ?></option>
                 <option value="accepted" <?php selected($status, 'accepted'); ?>><?php _e('Accepted', 'ox-applicants'); ?></option>
                 <option value="rejected" <?php selected($status, 'rejected'); ?>><?php _e('Rejected', 'ox-applicants'); ?></option>
+                <option value="duplicate" <?php selected($status, 'duplicate'); ?>><?php _e('Duplicate', 'ox-applicants'); ?></option>
             </select>
         </p>
 

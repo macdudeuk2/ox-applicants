@@ -60,7 +60,7 @@
 }
 
 .status-new {
-    background-color: #0073aa;
+    background-color: #17a2b8;
 }
 
 .status-on-hold {
@@ -76,6 +76,10 @@
     background-color: #dc3232;
 }
 
+.status-duplicate {
+    background-color: #ff6b6b;
+}
+
 /* WooCommerce Subscription Status Badges */
 .status-active {
     background-color: #46b450;
@@ -87,7 +91,7 @@
 }
 
 .status-pending-cancel {
-    background-color: #ff6b6b;
+    background-color: #6f42c1;
 }
 
 .status-cancelled {

@@ -140,14 +140,17 @@ class OX_Applicants_FluentForms {
             'phone' => $application_data['phone']
         ]);
 
-        // Only check if user already exists (to avoid duplicates)
+        // Check if user already exists and flag as duplicate if so
         OX_Applicants_Core::log_debug('Checking if user exists with email: ' . $application_data['email']);
         if (email_exists($application_data['email'])) {
-            OX_Applicants_Core::log_error('User already exists with email: ' . $application_data['email']);
-            return false;
+            $existing_user = get_user_by('email', $application_data['email']);
+            $application_data['is_duplicate'] = true;
+            $application_data['existing_user_id'] = $existing_user->ID;
+            $application_data['duplicate_note'] = 'User already exists with this email';
+            OX_Applicants_Core::log_debug('Duplicate user detected - existing user ID: ' . $existing_user->ID);
+        } else {
+            OX_Applicants_Core::log_debug('User existence check passed');
         }
-        
-        OX_Applicants_Core::log_debug('User existence check passed');
 
         // Generate username if not provided
         if (empty($application_data['username'])) {
@@ -222,7 +225,14 @@ class OX_Applicants_FluentForms {
      * @return int|false User ID or false on failure
      */
     private function create_user_account(array $application_data) {
-        // Prepare user data
+        // Check if this is a duplicate application (existing user)
+        if (!empty($application_data['is_duplicate'])) {
+            $existing_user_id = $application_data['existing_user_id'];
+            OX_Applicants_Core::log_debug("Using existing user account: {$existing_user_id}");
+            return $existing_user_id;
+        }
+
+        // Prepare user data for new user
         $user_data = [
             'user_login' => $application_data['username'],
             'user_email' => $application_data['email'],
@@ -381,7 +391,17 @@ class OX_Applicants_FluentForms {
         update_post_meta($application_id, '_address', $address);
         update_post_meta($application_id, '_wine_course', $application_data['wine_course']);
         update_post_meta($application_id, '_course_info', $application_data['course_info']);
-        update_post_meta($application_id, '_status', 'new');
+        
+        // Set status based on whether this is a duplicate
+        if (!empty($application_data['is_duplicate'])) {
+            update_post_meta($application_id, '_status', 'duplicate');
+            update_post_meta($application_id, '_is_duplicate', true);
+            update_post_meta($application_id, '_existing_user_id', $application_data['existing_user_id']);
+            update_post_meta($application_id, '_duplicate_note', $application_data['duplicate_note']);
+        } else {
+            update_post_meta($application_id, '_status', 'new');
+        }
+        
         update_post_meta($application_id, '_application_date', current_time('mysql'));
         update_post_meta($application_id, '_last_action_date', current_time('mysql'));
         

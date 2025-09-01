@@ -239,6 +239,7 @@ class OX_Applicants_Admin {
                     'on_hold' => __('On Hold', 'ox-applicants'),
                     'accepted' => __('Accepted', 'ox-applicants'),
                     'rejected' => __('Rejected', 'ox-applicants'),
+                    'duplicate' => __('Duplicate', 'ox-applicants'),
                 ];
 
                 $link_parts = [];
@@ -375,6 +376,37 @@ class OX_Applicants_Admin {
                     </div>
                 </div>
 
+                <?php if ($status === 'duplicate'): ?>
+                    <div class="notice notice-warning" style="margin: 20px 0; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107;">
+                        <h4 style="margin-top: 0; color: #856404;">⚠️ <?php _e('Duplicate Application Detected', 'ox-applicants'); ?></h4>
+                        <p style="margin-bottom: 10px;">
+                            <strong><?php _e('This application appears to be a duplicate.', 'ox-applicants'); ?></strong>
+                            <?php 
+                            $existing_user_id = get_post_meta($application_id, '_existing_user_id', true);
+                            $duplicate_note = get_post_meta($application_id, '_duplicate_note', true);
+                            if ($existing_user_id) {
+                                $existing_user = get_user_by('id', $existing_user_id);
+                                if ($existing_user) {
+                                    echo sprintf(
+                                        __('The applicant already has an existing user account (User ID: %d, Email: %s).', 'ox-applicants'),
+                                        $existing_user_id,
+                                        $existing_user->user_email
+                                    );
+                                }
+                            }
+                            if ($duplicate_note) {
+                                echo ' ' . esc_html($duplicate_note);
+                            }
+                            ?>
+                        </p>
+                        <p style="margin-bottom: 0;">
+                            <a href="<?php echo admin_url('user-edit.php?user_id=' . $existing_user_id); ?>" class="button button-secondary" target="_blank">
+                                <?php _e('View Existing User Profile', 'ox-applicants'); ?>
+                            </a>
+                        </p>
+                    </div>
+                <?php endif; ?>
+
                 <div class="ox-application-content">
                     <div class="ox-application-section">
                         <h3><?php _e('Personal Information', 'ox-applicants'); ?></h3>
@@ -481,6 +513,7 @@ class OX_Applicants_Admin {
                                     <option value="on_hold" <?php selected($status, 'on_hold'); ?>><?php _e('On Hold', 'ox-applicants'); ?></option>
                                     <option value="accepted" <?php selected($status, 'accepted'); ?>><?php _e('Accepted', 'ox-applicants'); ?></option>
                                     <option value="rejected" <?php selected($status, 'rejected'); ?>><?php _e('Rejected', 'ox-applicants'); ?></option>
+                                    <option value="duplicate" <?php selected($status, 'duplicate'); ?>><?php _e('Duplicate', 'ox-applicants'); ?></option>
                                 </select>
                                 <input type="submit" name="update_status" class="button button-primary" value="<?php _e('Update Status', 'ox-applicants'); ?>" style="margin-left: 10px;">
                             </p>
@@ -1052,6 +1085,7 @@ class OX_Applicants_Admin {
             'on_hold' => 0,
             'accepted' => 0,
             'rejected' => 0,
+            'duplicate' => 0,
         ];
 
         foreach ($all_applications as $application) {
@@ -1080,6 +1114,7 @@ class OX_Applicants_Admin {
             'on_hold' => __('On Hold', 'ox-applicants'),
             'accepted' => __('Accepted', 'ox-applicants'),
             'rejected' => __('Rejected', 'ox-applicants'),
+            'duplicate' => __('Duplicate', 'ox-applicants'),
         ];
 
         $status_classes = [
@@ -1087,6 +1122,7 @@ class OX_Applicants_Admin {
             'on_hold' => 'status-on-hold',
             'accepted' => 'status-accepted',
             'rejected' => 'status-rejected',
+            'duplicate' => 'status-duplicate',
         ];
 
         $label = $status_labels[$status] ?? $status;
@@ -1480,7 +1516,7 @@ class OX_Applicants_Admin {
                 'order_id' => $order->get_id(),
                 'customer_id' => $user_id,
                 'start_date' => current_time('mysql'),
-                'status' => 'on-hold',
+                'status' => 'pending',
                 'billing_period' => $period,
                 'billing_interval' => $interval,
                 'customer_note' => 'Subscription created programmatically for manual renewal.'

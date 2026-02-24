@@ -1864,31 +1864,34 @@ class OX_Applicants_Admin {
             
             switch ($filter) {
                 case 'next_30_days':
-                    $thirty_days_from_now = $current_time + (30 * 24 * 60 * 60);
-                    $include_subscription = ($next_payment_timestamp >= $current_time && $next_payment_timestamp <= $thirty_days_from_now);
+                    $start = strtotime(date('Y-m-d 00:00:00', $current_time));
+                    $end = strtotime(date('Y-m-d 23:59:59', $current_time + (30 * 24 * 60 * 60)));
+                    $include_subscription = ($next_payment_timestamp >= $start && $next_payment_timestamp <= $end);
                     break;
                     
                 case 'current_month':
-                    $current_month_start = strtotime('first day of this month', $current_time);
-                    $current_month_end = strtotime('last day of this month', $current_time);
+                    $current_month_start = strtotime(date('Y-m-01 00:00:00', $current_time));
+                    $current_month_end = strtotime(date('Y-m-t 23:59:59', $current_time));
                     $include_subscription = ($next_payment_timestamp >= $current_month_start && $next_payment_timestamp <= $current_month_end);
                     break;
                     
                 case 'next_month':
-                    $next_month_start = strtotime('first day of next month', $current_time);
-                    $next_month_end = strtotime('last day of next month', $current_time);
+                    $next_month_ref = strtotime('first day of next month', $current_time);
+                    $next_month_start = strtotime(date('Y-m-01 00:00:00', $next_month_ref));
+                    $next_month_end = strtotime(date('Y-m-t 23:59:59', $next_month_ref));
                     $include_subscription = ($next_payment_timestamp >= $next_month_start && $next_payment_timestamp <= $next_month_end);
                     break;
                     
                 case 'last_month':
-                    $last_month_start = strtotime('first day of last month', $current_time);
-                    $last_month_end = strtotime('last day of last month', $current_time);
+                    $last_month_ref = strtotime('first day of last month', $current_time);
+                    $last_month_start = strtotime(date('Y-m-01 00:00:00', $last_month_ref));
+                    $last_month_end = strtotime(date('Y-m-t 23:59:59', $last_month_ref));
                     $include_subscription = ($next_payment_timestamp >= $last_month_start && $next_payment_timestamp <= $last_month_end);
                     break;
                     
                 case 'custom':
                     if (!empty($custom_start) && !empty($custom_end)) {
-                        $custom_start_timestamp = strtotime($custom_start);
+                        $custom_start_timestamp = strtotime($custom_start . ' 00:00:00');
                         $custom_end_timestamp = strtotime($custom_end . ' 23:59:59');
                         $include_subscription = ($next_payment_timestamp >= $custom_start_timestamp && $next_payment_timestamp <= $custom_end_timestamp);
                     }

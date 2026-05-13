@@ -171,6 +171,10 @@ The plugin includes comprehensive error handling:
 
 ## Changelog
 
+### Version 1.2.0
+- **Members List**: New admin page listing all WordPress users with the "member" role, sorted alphabetically by last name, showing username, last name, first name, and email
+- **Members CSV Export**: Download the members list as a CSV file directly from the Members admin page
+
 ### Version 1.1.3
 - **Renewals Date Filter Fix**: Fixed bug where renewal date filters (Next Month, Current Month, Last Month, Next 30 Days) could miss subscriptions due on boundary dates because `strtotime()` preserved the current time-of-day in filter boundaries instead of using start/end of day
 - **Custom Date Range Fix**: Ensured custom date range start boundary is normalised to 00:00:00

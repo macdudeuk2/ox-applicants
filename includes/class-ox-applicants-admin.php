@@ -77,6 +77,16 @@ class OX_Applicants_Admin {
             'ox-renewals',
             [$this, 'render_renewals_page']
         );
+
+        // Members submenu
+        add_submenu_page(
+            'ox-applications',
+            __('Members', 'ox-applicants'),
+            __('Members', 'ox-applicants'),
+            'manage_options',
+            'ox-members',
+            [$this, 'render_members_page']
+        );
     }
 
     /**
@@ -93,7 +103,7 @@ class OX_Applicants_Admin {
      * Enqueue admin scripts
      */
     public function enqueue_admin_scripts($hook): void {
-        if (strpos($hook, 'ox-applications') === false && strpos($hook, 'ox-renewals') === false) {
+        if (strpos($hook, 'ox-applications') === false && strpos($hook, 'ox-renewals') === false && strpos($hook, 'ox-members') === false) {
             return;
         }
 
@@ -2200,17 +2210,120 @@ class OX_Applicants_Admin {
     }
 
     /**
+     * Render the Members admin page
+     */
+    public function render_members_page(): void {
+        $users = new WP_User_Query([
+            'role'    => 'member',
+            'orderby' => 'meta_value',
+            'meta_key' => 'last_name',
+            'order'   => 'ASC',
+            'fields'  => 'all',
+        ]);
+
+        $members = $users->get_results();
+
+        $export_url = add_query_arg([
+            'page'   => 'ox-members',
+            'export' => 'csv',
+        ], admin_url('admin.php'));
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e('Members', 'ox-applicants'); ?></h1>
+
+            <p>
+                <a href="<?php echo esc_url($export_url); ?>" class="button button-secondary">
+                    <?php esc_html_e('Download CSV', 'ox-applicants'); ?>
+                </a>
+            </p>
+
+            <?php if (empty($members)) : ?>
+                <p><?php esc_html_e('No members found.', 'ox-applicants'); ?></p>
+            <?php else : ?>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th scope="col"><?php esc_html_e('Username', 'ox-applicants'); ?></th>
+                            <th scope="col"><?php esc_html_e('Last Name', 'ox-applicants'); ?></th>
+                            <th scope="col"><?php esc_html_e('First Name', 'ox-applicants'); ?></th>
+                            <th scope="col"><?php esc_html_e('Email', 'ox-applicants'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($members as $member) : ?>
+                            <tr>
+                                <td><?php echo esc_html($member->user_login); ?></td>
+                                <td><?php echo esc_html(get_user_meta($member->ID, 'last_name', true)); ?></td>
+                                <td><?php echo esc_html(get_user_meta($member->ID, 'first_name', true)); ?></td>
+                                <td><?php echo esc_html($member->user_email); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p><?php echo esc_html(sprintf(_n('%s member found.', '%s members found.', count($members), 'ox-applicants'), number_format_i18n(count($members)))); ?></p>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * Export members data as CSV
+     */
+    private function export_members_csv(): void {
+        $users = new WP_User_Query([
+            'role'    => 'member',
+            'orderby' => 'meta_value',
+            'meta_key' => 'last_name',
+            'order'   => 'ASC',
+            'fields'  => 'all',
+        ]);
+
+        $members = $users->get_results();
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="members-' . date('Y-m-d') . '.csv"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
+
+        $output = fopen('php://output', 'w');
+
+        // UTF-8 BOM
+        fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        fputcsv($output, [
+            __('Username', 'ox-applicants'),
+            __('Last Name', 'ox-applicants'),
+            __('First Name', 'ox-applicants'),
+            __('Email', 'ox-applicants'),
+        ]);
+
+        foreach ($members as $member) {
+            fputcsv($output, [
+                $member->user_login,
+                get_user_meta($member->ID, 'last_name', true),
+                get_user_meta($member->ID, 'first_name', true),
+                $member->user_email,
+            ]);
+        }
+
+        fclose($output);
+        exit;
+    }
+
+    /**
      * Handle CSV export at admin_init stage to prevent HTML output interference
      */
     public function handle_csv_export(): void {
-        // Only handle CSV export for our renewals page
-        if (!isset($_GET['page']) || $_GET['page'] !== 'ox-renewals') {
-            return;
-        }
-        
-        // Check for CSV export request
-        if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+        $page = $_GET['page'] ?? '';
+
+        // Renewals CSV export
+        if ($page === 'ox-renewals' && isset($_GET['export']) && $_GET['export'] === 'csv') {
             $this->export_renewals_csv();
+        }
+
+        // Members CSV export
+        if ($page === 'ox-members' && isset($_GET['export']) && $_GET['export'] === 'csv') {
+            $this->export_members_csv();
         }
     }
 } 
